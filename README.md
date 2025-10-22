@@ -6,3 +6,16 @@ Group member names and ccids (2-3 members)
   ccid3, name2  
 
 # Names of anyone you have collaborated with (as much as it is allowed within the course policy) or a line saying that you did not collaborate with anyone else.  
+
+
+# Accessing Virtual Environment on Linux
+1) Create the virtual environment
+`python3 -m venv <envname>`
+
+2) Activate the virtual environment
+`source <envname>/bin/activate`
+
+3) Make sure to add your virtual environment to the .gitignore file
+
+4) Install dependencies
+`pip install -r requirements.txt`
