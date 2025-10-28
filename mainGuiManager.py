@@ -3,6 +3,7 @@ from PyQt6.QtCore import *
 from PyQt6.QtGui import *
 from GUI import UI
 import checkFormats
+from functools import partial
 import sys
 
 def start():
@@ -67,33 +68,135 @@ def check_login_info():
         print("Error: Unknown user type")
     return
 
-def open_customer_interface():
+def open_customer_interface(refresh=True):
     """Opens the customer page."""
+    print("Refresh:",refresh)
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.customerSearchPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
-    refresh_page()
+    UI_OBJECT.accountBox.setCurrentIndex(-1)
+    if refresh:
+        refresh_page()
+        UI_OBJECT.nextButton.setEnabled(False)
+        UI_OBJECT.previousButton.setEnabled(False)
+        for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
+            UI_OBJECT.customerSearchFormDisplay.removeRow(0)
     items = ...  # Fetch items from database to populate search filters                                         <------------------------------------ Database calls
-    UI_OBJECT.accountBox.addItems(["Logout", "Exit"])
-    UI_OBJECT.accountBox.currentIndexChanged.connect(customer_account_options)
+    # UI_OBJECT.accountBox.addItems(["Logout", "Exit"])
+    UI_OBJECT.accountBox.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
+    UI_OBJECT.accountBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.accountBox))
     return
 
 def customer_search_for_products():
     """Displays products based on search."""
     searchString = UI_OBJECT.customerSearchLineEdit.text().lower()
-    products = ...# Fetch products from database based on searchString (returns list or Dictionary?)            <------------------------------------ Database calls
-    products = ["Product 1", "Product 2", "Product 3"]  # Placeholder for fetched products
-    for product in products:
-        UI_OBJECT.customerSearchFormDisplay.addRow(QLabel(product))
-        # UI_OBJECT.customerSearchFormDisplay.addRow(QLabel("---------------------"))
+    products = ...# Fetch products from database based on searchString (returns a Dictionary with productid as key)<------------------------------------ Database calls
+    products = {1: "Product A", 2: "Product B", 3: "Product C", 4: "Product D", 5: "Product E", 6: "Product F", 7: "Product G", 8: "Product H", 9: "Product I", 10: "Product J", 11: "Product K"}
+    totalPages = len(products) // 5 + (1 if len(products) % 5 != 0 else 0)
+    UI_OBJECT.totalPageLabel.setText(str(totalPages))
+    UI_OBJECT.of.setText("of")
+    UI_OBJECT.PRODUCTS_LIST = []
+    UI_OBJECT.current_page_num = 0
+    separate_to_pages(products)
+    display_next_page()
     return
 
-def next_button_clicked():
+def display_next_page():
     """Displays the next page of products."""
+    if UI_OBJECT.current_page_num+1 > len(UI_OBJECT.PRODUCTS_LIST):
+        return
+    UI_OBJECT.current_page_num += 1
+    if UI_OBJECT.current_page_num in [0,1] :
+        UI_OBJECT.previousButton.setEnabled(False)
+    else:
+        UI_OBJECT.previousButton.setEnabled(True)
+    if UI_OBJECT.current_page_num == len(UI_OBJECT.PRODUCTS_LIST):
+        UI_OBJECT.nextButton.setEnabled(False)
+    else:
+        UI_OBJECT.nextButton.setEnabled(True)
+    for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
+        UI_OBJECT.customerSearchFormDisplay.removeRow(0)
+    UI_OBJECT.currentPageLabel.setText(str(UI_OBJECT.current_page_num))
+    add_product_buttons()
+    return
 
+def display_previous_page():
+    """Displays the previous page of products."""
+    if UI_OBJECT.current_page_num-1 < 1:
+        return
+    UI_OBJECT.current_page_num -= 1
+    if UI_OBJECT.current_page_num in [0,1] :
+        UI_OBJECT.previousButton.setEnabled(False)
+    else:
+        UI_OBJECT.previousButton.setEnabled(True)
+    if UI_OBJECT.current_page_num == len(UI_OBJECT.PRODUCTS_LIST):
+        UI_OBJECT.nextButton.setEnabled(False)
+    else:
+        UI_OBJECT.nextButton.setEnabled(True)
+    for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
+        UI_OBJECT.customerSearchFormDisplay.removeRow(0)
+    UI_OBJECT.currentPageLabel.setText(str(UI_OBJECT.current_page_num))
+    add_product_buttons()
+    return
 
-def customer_account_options():
+def add_product_buttons():
+    """Adds product buttons to the form layout."""
+    products = UI_OBJECT.PRODUCTS_LIST[UI_OBJECT.current_page_num - 1]
+    for product in products:
+        productButton = QPushButton(products[product])
+        productButton.setMinimumSize(100, 75)
+        productButton.clicked.connect(partial(view_product_details, product))
+        UI_OBJECT.customerSearchFormDisplay.addRow(productButton)
+
+def separate_to_pages(products, productsPerPage=5):
+    """Separates products into dicts of 5 products each."""
+    paginated_products = {}
+    count = 0
+    for i in products:
+        paginated_products[i] = products[i]
+        count += 1
+        if count == productsPerPage:
+            count = 0
+            UI_OBJECT.PRODUCTS_LIST.append(paginated_products)
+            paginated_products = {}
+    if paginated_products is not None:
+        UI_OBJECT.PRODUCTS_LIST.append(paginated_products)
+    print(UI_OBJECT.PRODUCTS_LIST)
+    return
+
+def view_product_details(product_id):
+    """Views the details of a selected product."""
+    print("Product:",product_id)
+    # get product details from database using product_id                                                            <------------------------------------ Database calls
+    # Update viewedProduct table in database to add a record of this view                                            <------------------------------------ Database calls
+    pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.productDetailsPage)
+    UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
+    UI_OBJECT.productDescComboBox.setCurrentIndex(-1)
+    UI_OBJECT.productDescComboBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.productDescComboBox))
+    print("Yay")
+    product = {
+        "id": "12345",
+        "name": "Sample Product",
+        "category": "Sample Category",
+        "description": "This is a sample product description.",
+        "price": "$19.99",
+        "stock": "0"}
+    UI_OBJECT.productNameLabel.setText(product["name"])
+    UI_OBJECT.productDescriptionLabel.setText(product["description"])
+    UI_OBJECT.idLineEdit.setText(product["id"])
+    UI_OBJECT.categoryLineEdit.setText(product["category"])
+    UI_OBJECT.priceLineEdit.setText(product["price"])
+    UI_OBJECT.stockLineEdit.setText(product["stock"])
+    if product["stock"] == "0":
+        UI_OBJECT.itemCount.setText("0")
+        UI_OBJECT.addItemCount.setEnabled(False)
+        UI_OBJECT.subtractItemCount.setEnabled(False)
+        UI_OBJECT.itemCount.setEnabled(False)
+        UI_OBJECT.addToCartButton.setEnabled(False)
+    return
+
+def customer_account_options(comboBox):
     """Handles customer account options."""
-    option = UI_OBJECT.accountBox.currentText()
+    option = comboBox.currentText()
     if option == "Logout":
         start()
     elif option == "Exit":
@@ -110,11 +213,6 @@ def refresh_page():
     for item in answer:
         if isinstance(item, QLineEdit):
             item.setText("")
-        if isinstance(item, QComboBox):
-            item.clear()
-        if isinstance(item, QFormLayout):
-            for row in range(item.rowCount()):
-                item.removeRow(row)
 
 def establish_connections():
     """Creates connections between buttons. Add all connections here."""
@@ -132,6 +230,13 @@ def establish_connections():
 
     #Customer Page Connections
     UI_OBJECT.customerSearchLineEdit.returnPressed.connect(customer_search_for_products)
+    UI_OBJECT.nextButton.clicked.connect(display_next_page)
+    UI_OBJECT.previousButton.clicked.connect(display_previous_page)
+
+    # Product Details Page Connections
+    UI_OBJECT.productDetailsBackButton.clicked.connect(lambda: open_customer_interface(False))
+    UI_OBJECT.addItemCount.clicked.connect(lambda: UI_OBJECT.itemCount.setText(str(min(int(UI_OBJECT.itemCount.text())+1, int(UI_OBJECT.stockLineEdit.text())))))
+    UI_OBJECT.subtractItemCount.clicked.connect(lambda: UI_OBJECT.itemCount.setText(str(max(1,int(UI_OBJECT.itemCount.text())-1))))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

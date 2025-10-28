@@ -7,3 +7,5 @@ class UI(QMainWindow):
     def __init__(self):
         super().__init__()
         uic.loadUi('designerFile.ui', self)
+        self.PRODUCTS_LIST = []
+        self.current_page_num = 0
