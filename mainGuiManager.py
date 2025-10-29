@@ -396,15 +396,52 @@ def display_top_products():
 def check_box_toggled(checkbox):
     """Handles checkbox toggles for top products display."""
     if checkbox == UI_OBJECT.distinctOrdersCheckBox:
-        print("Distincrt Orders Checked")
         UI_OBJECT.totalViewsCheckBox.blockSignals(True)
         UI_OBJECT.totalViewsCheckBox.setChecked(False)
         UI_OBJECT.totalViewsCheckBox.blockSignals(False)
+        add_top_products_by_distinct_orders()
     elif checkbox == UI_OBJECT.totalViewsCheckBox:
         print("Total Views Checked")
         UI_OBJECT.distinctOrdersCheckBox.blockSignals(True)
         UI_OBJECT.distinctOrdersCheckBox.setChecked(False)
         UI_OBJECT.distinctOrdersCheckBox.blockSignals(False)
+        add_top_products_by_total_views()
+
+def add_top_products_by_distinct_orders():
+    """Adds top products by distinct orders to the UI."""
+    for row in range(UI_OBJECT.topProductsFormLayout.rowCount()):
+        UI_OBJECT.topProductsFormLayout.removeRow(0)
+    # Fetch top 3 products by distinct orders from database as a dictionary                   <------------------------------------ Database calls
+    top_products = {
+        1: ["Product A", 120],
+        2: ["Product B", 110],
+        3: ["Product C", 100],
+    }
+    for key, value in top_products.items():
+        name, orders = value[0], value[1]
+        label = QLabel(f"{key}. {name} - {orders} distinct orders")
+        label.setMinimumHeight(50)
+        label.setStyleSheet("font-weight: bold; font-size: 13px;")
+        UI_OBJECT.topProductsFormLayout.addRow(label)
+    return
+
+def add_top_products_by_total_views():
+    """Adds top 3 products by total views to the UI."""
+    for row in range(UI_OBJECT.topProductsFormLayout.rowCount()):
+        UI_OBJECT.topProductsFormLayout.removeRow(0)
+    # Fetch top 3 products by total views from database as a dictionary                        <------------------------------------ Database calls
+    top_products = {
+        1: ["Product X", 500],
+        2: ["Product Y", 450],
+        3: ["Product Z", 400],
+    }
+    for key, value in top_products.items():
+        name, views = value[0], value[1]
+        label = QLabel(f"{key}. {name} - {views} total views")
+        label.setMinimumHeight(50)
+        label.setStyleSheet("font-weight: bold; font-size: 13px;")
+        UI_OBJECT.topProductsFormLayout.addRow(label)
+    return
 
 def refresh_page():
     """Refreshes the current page."""
