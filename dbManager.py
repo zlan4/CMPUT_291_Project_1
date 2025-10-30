@@ -358,3 +358,104 @@ def grand_total(cursor, ono):
         return True, total
     else:
         return False, ''
+
+"""Salesperson Functionalities"""
+def update_product(cursor, product_id, new_price, new_stock):
+    """
+    Allows a salesperson to update a product's price and stock count
+    
+    @param product_id: product id
+    @param new_price: new price entered by the salesperson
+    @param new_stock: new stock count entered by the salesperson
+    """
+
+    cursor.execute('''
+        UPDATE products
+        SET price = ?, stock_count = ?
+        WHERE pid = ?
+    ''', (new_price, new_stock, product_id))
+
+def generate_sales_report(cursor):
+    """
+    Generate weekly sales report
+    
+    @return:
+    - Dictionary containing the sales statistics for the past 7 days (excluding the current day)
+    """
+
+    cursor.execute('''
+        SELECT 
+        COUNT(DISTINCT o.ono) AS distinct_orders,
+        COUNT(DISTINCT ol.pid) AS distinct_products_sold,
+        COUNT(DISTINCT o.cid) AS distinct_customers_with_purchases,
+        ROUND(SUM(ol.qty * ol.uprice) / COUNT(DISTINCT o.cid), 2) AS average_amount_per_customer,
+        ROUND(SUM(ol.qty * ol.uprice), 2) AS total_sales_amount
+        FROM orders o
+        JOIN orderlines ol ON o.ono = ol.ono
+        WHERE date(o.odate) >= date('now', '-7 days') AND date(o.odate) <= date('now', '-1 day');
+    ''')
+    result = cursor.fetchone()
+    weekly_sales = {
+        'distinct_orders': result[0],
+        'distinct_products_sold': result[1],
+        'distinct_customers_with_purchases': result[2],
+        'average_amount_per_customer': result[3],
+        'total_sales_amount': result[4]
+    }
+    return weekly_sales
+
+def top_three_products_based_on_order(cursor):
+    """
+    List the top three products based on the number of distinct orders they were in (includes ties)
+    
+    @return:
+    - Dictionary containing product name, id, and order count for the top three products
+    """
+
+    cursor.execute("""
+    WITH product_counts AS (
+    SELECT p.pid, p.name, COUNT(DISTINCT ol.ono) as order_count
+    FROM products p JOIN orderlines ol ON p.pid = ol.pid
+    GROUP BY p.pid, p.name)
+    SELECT name, pid, order_count
+    FROM product_counts pc1
+    WHERE (
+    SELECT COUNT(DISTINCT order_count)
+    FROM product_counts pc2
+    WHERE pc2.order_count > pc1.order_count
+    ) < 3
+    ORDER BY order_count DESC, name
+    """)
+    results = cursor.fetchall()
+    top_products = {}
+    for i, (name, pid, order_count) in enumerate(results, 1):
+        top_products[i] = [name, pid, order_count]
+    return top_products
+
+def top_three_products_based_on_views(cursor):
+    """
+    List the top three products based on the number of views (includes ties)
+    
+    @return:
+    - Dictionary containing product name, id, and view count for the top three products
+    """
+
+    cursor.execute("""
+    WITH product_views AS (
+    SELECT p.pid, p.name, COUNT(vp.pid) as view_count
+    FROM products p JOIN viewedProduct vp ON p.pid = vp.pid
+    GROUP BY p.pid, p.name)
+    SELECT name, pid, view_count
+    FROM product_views pv1
+    WHERE (
+    SELECT COUNT(DISTINCT view_count)
+    FROM product_views pv2
+    WHERE pv2.view_count > pv1.view_count
+    ) < 3
+    ORDER BY view_count DESC, name
+    """)
+    results = cursor.fetchall()
+    top_products = {}
+    for i, (name, pid, view_count) in enumerate(results, 1):
+        top_products[i] = [name, pid, view_count]
+    return top_products
