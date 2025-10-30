@@ -325,24 +325,21 @@ def view_product_details_salesperson():
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.productDetailsPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
     product_id = UI_OBJECT.productSearchLineEdit.text()
-    # get product details from database using product_id.                           <------------------------------------ Database calls
+    # get product details from database using product_id.
     # same as the one in view_product_details function, don't have to create again
-    product = {
-        "id": "12345",
-        "name": "Sample Product",
-        "category": "Sample Category",
-        "description": "This is a sample product description.",
-        "price": "19.99",
-        "stock": "10"}
-    UI_OBJECT.productNameLabel.setText(product["name"])
-    UI_OBJECT.productDescriptionLabel.setText(product["description"])
-    UI_OBJECT.idLineEdit.setText(product["id"])
+    dbManager.product_details(UI_OBJECT.cursor, product_id) # database call
+    check, product = dbManager.product_details(UI_OBJECT.cursor, product_id)
+    if not check:
+        return
+    UI_OBJECT.productNameLabel.setText(str(product[1]))
+    UI_OBJECT.productDescriptionLabel.setText(product[5])
+    UI_OBJECT.idLineEdit.setText(str(product[0]))
     UI_OBJECT.idLineEdit.setEnabled(False)
-    UI_OBJECT.categoryLineEdit.setText(product["category"])
+    UI_OBJECT.categoryLineEdit.setText(product[2])
     UI_OBJECT.categoryLineEdit.setEnabled(False)
-    UI_OBJECT.priceLineEdit.setText(product["price"])
+    UI_OBJECT.priceLineEdit.setText(str(product[3]))
     UI_OBJECT.priceLineEdit.returnPressed.connect(UI_OBJECT.stockLineEdit.setFocus)
-    UI_OBJECT.stockLineEdit.setText(product["stock"])
+    UI_OBJECT.stockLineEdit.setText(str(product[4]))
     UI_OBJECT.stockLineEdit.returnPressed.connect(save_product_changes)
 
     # Hide cart related UI elements for salesperson view
@@ -357,32 +354,30 @@ def save_product_changes():
     product_id = UI_OBJECT.idLineEdit.text()
     new_price = UI_OBJECT.priceLineEdit.text()
     new_stock = UI_OBJECT.stockLineEdit.text()
-    product = ...# get product details from database using product_id                                                            <------------------------------------ Database calls
+    # get product details from database using product_id                                                            <------------------------------------ Database calls
     # Same as the one in view_product_details function, don't have to create again
-    if product["price"] == new_price and product["stock"] == new_stock:
+    check, product = dbManager.product_details(UI_OBJECT.cursor, product_id)
+    if not check:
+        return
+    if product[3] == new_price and product[4] == new_stock:
         return
     confirmation = popupFile.confirm_popup(f'Are you sure you want to save changes product: {product_id}?')
     if not confirmation:
         return
     print(new_price, new_stock)
-    # Update product details in database                                                                         <------------------------------------ Database calls
+    # Update product details in database
     # Arguments: product_id, new_price, new_stock
+    dbManager.update_product(UI_OBJECT.cursor, product_id, new_price, new_stock)
     return
 
 def view_sales_report_clicked():
-    """Displays the sales report fo the last week."""
+    """Displays the sales report for the last week."""
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.weeklySalesReportPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
     for row in range(UI_OBJECT.salesReportFormLayout.rowCount()):
         UI_OBJECT.salesReportFormLayout.removeRow(0)
-    # Fetch sales report data from database as a dictionary                                        <------------------------------------ Database calls
-    weekly_sales = {
-        "distinct_orders": 150,
-        "distint_products_sold": 300,
-        "distinct_customers_with_purchases": 120,
-        "average_amount_per_customer": 250.75,
-        "total_sales_amount": 30150.00
-    }
+    # Fetch sales report data from database as a dictionary
+    weekly_sales = dbManager.generate_sales_report(UI_OBJECT.cursor)
     for key, value in weekly_sales.items():
         label = QLabel(key.replace("_", " ").title() + ":")
         label.setMinimumHeight(50)
@@ -415,15 +410,10 @@ def add_top_products_by_distinct_orders():
     """Adds top products by distinct orders to the UI."""
     for row in range(UI_OBJECT.topProductsFormLayout.rowCount()):
         UI_OBJECT.topProductsFormLayout.removeRow(0)
-    # Fetch top 3 products by distinct orders from database as a dictionary                   <------------------------------------ Database calls
-    top_products = {
-        1: ["Product A", 120],
-        2: ["Product B", 110],
-        3: ["Product C", 100],
-    }
+    top_products = dbManager.top_three_products_based_on_order(UI_OBJECT.cursor)
     for key, value in top_products.items():
-        name, orders = value[0], value[1]
-        label = QLabel(f"{key}. {name} - {orders} distinct orders")
+        name, pid, orders = value[0], value[1], value[2]
+        label = QLabel(f"{key}. {name} (id: {pid}) - {orders} distinct orders")
         label.setMinimumHeight(50)
         label.setStyleSheet("font-weight: bold; font-size: 13px;")
         UI_OBJECT.topProductsFormLayout.addRow(label)
@@ -434,14 +424,10 @@ def add_top_products_by_total_views():
     for row in range(UI_OBJECT.topProductsFormLayout.rowCount()):
         UI_OBJECT.topProductsFormLayout.removeRow(0)
     # Fetch top 3 products by total views from database as a dictionary                        <------------------------------------ Database calls
-    top_products = {
-        1: ["Product X", 500],
-        2: ["Product Y", 450],
-        3: ["Product Z", 400],
-    }
+    top_products = dbManager.top_three_products_based_on_views(UI_OBJECT.cursor)
     for key, value in top_products.items():
-        name, views = value[0], value[1]
-        label = QLabel(f"{key}. {name} - {views} total views")
+        name, pid, views = value[0], value[1], value[2]
+        label = QLabel(f"{key}. {name} (id: {pid}) - {views} total views")
         label.setMinimumHeight(50)
         label.setStyleSheet("font-weight: bold; font-size: 13px;")
         UI_OBJECT.topProductsFormLayout.addRow(label)
