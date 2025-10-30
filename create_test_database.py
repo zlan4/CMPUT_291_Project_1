@@ -79,8 +79,8 @@ c.execute("""CREATE TABLE cart(
 )""")
 
 c.executemany("INSERT INTO users VALUES(?,?,?)", [
-    ("u1","pass123","customer"),
-    ("u2","secret","sales")
+    ("1","pass123","customer"),
+    ("2","secret","sales")
 ])
 
 c.executemany("INSERT INTO customers VALUES(?,?,?)", [

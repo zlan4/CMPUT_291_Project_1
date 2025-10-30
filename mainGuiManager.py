@@ -431,15 +431,15 @@ def look_up_products_salesperson():
 def view_product_details_salesperson():
     """Shows the product data from the product_id entered by the salesperson."""
     UI_OBJECT.productDescComboBox.setVisible(False)
-    pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.productDetailsPage)
-    UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
     product_id = UI_OBJECT.productSearchLineEdit.text()
     # get product details from database using product_id.
     # same as the one in view_product_details function, don't have to create again
-    dbManager.product_details(UI_OBJECT.cursor, product_id) # database call
     check, product = dbManager.product_details(UI_OBJECT.cursor, product_id)
     if not check:
+        popupFile.info_popup("Product not found")
         return
+    pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.productDetailsPage)
+    UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
     UI_OBJECT.productNameLabel.setText(str(product[1]))
     UI_OBJECT.productDescriptionLabel.setText(product[5])
     UI_OBJECT.idLineEdit.setText(str(product[0]))
