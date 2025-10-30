@@ -433,6 +433,13 @@ def top_three_products_based_on_order(cursor):
     return top_products
 
 def top_three_products_based_on_views(cursor):
+    """
+    List the top three products based on the number of views (includes ties)
+    
+    @return:
+    - Dictionary containing product name, id, and view count for the top three products
+    """
+
     cursor.execute("""
     WITH product_views AS (
     SELECT p.pid, p.name, COUNT(vp.pid) as view_count
