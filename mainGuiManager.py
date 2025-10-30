@@ -6,11 +6,14 @@ import checkFormats
 from functools import partial
 import popupFile
 import sys
+import sqlite3
+import dbManager
 
 def start():
     """Starts the application."""
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.loginPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
+    UI_OBJECT.usernameLineEdit.setFocus()
     UI_OBJECT.loginErrorLabel.setText("")
     refresh_page()
     UI_OBJECT.saveChangesButton.setVisible(True)
@@ -27,6 +30,11 @@ def signup_page():
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.signupPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
     UI_OBJECT.signupErrorLabel.setText("")
+    UI_OBJECT.signupUsernameLineEdit.setFocus()
+    UI_OBJECT.signupUsernameLineEdit.returnPressed.connect(UI_OBJECT.signupEmailLineEdit.setFocus)
+    UI_OBJECT.signupEmailLineEdit.returnPressed.connect(UI_OBJECT.signupPasswordLineEdit.setFocus)
+    UI_OBJECT.signupPasswordLineEdit.returnPressed.connect(UI_OBJECT.signupConfirmPasswordLineEdit.setFocus)
+    UI_OBJECT.signupConfirmPasswordLineEdit.returnPressed.connect(signup_button_clicked)
     refresh_page()
     return
 
@@ -46,14 +54,14 @@ def signup_button_clicked():
         UI_OBJECT.signupErrorLabel.setText("Passwords do not match.")
         return
     UI_OBJECT.signupErrorLabel.setText("")
-    # Check if email already exists, if it exists, print error                                                  <------------------------------------ Database calls
-    # Argumensts: email
-    # If email doesn't exist, create new user in database                                                       <------------------------------------ Database calls
-    # Arguments: username, email, password
-    UI_OBJECT.customer_id = ...  # Get the newly created customer's ID from database                                   <------------------------------------ Database calls
-    # open_customer_interface()
-    open_salesperson_interface()  # For testing purposes, open salesperson interface directly
+    check, user_id = dbManager.register_user(UI_OBJECT.cursor, username, email, password)
+    UI_OBJECT.conn.commit()
+    if not check:
+        UI_OBJECT.signupErrorLabel.setText("An account with the email already exists")
+        return
+    UI_OBJECT.user_id = user_id
     UI_OBJECT.user_mode = 'customer'
+    open_customer_interface()
     return
 
 def check_login_info():
@@ -63,18 +71,17 @@ def check_login_info():
     if len(username) == 0 or len(password) == 0:
         UI_OBJECT.loginErrorLabel.setText("Please fill in all fields.")
         return
-    valid_user = True   # Verify user credentials                                                               <------------------------------------ Database calls   
-    # Arguments: username, password
-    if not valid_user:
+    check, user_details = dbManager.check_login(UI_OBJECT.cursor, username, password)
+    if not check:
         UI_OBJECT.loginErrorLabel.setText("Invalid username or password.")
         return
     UI_OBJECT.loginErrorLabel.setText("")
-    user_type = "salesperson"  # or "salesperson"  # This should be determined by actual login info                <------------------------------------ Database calls
-    # Arguments: username, password
+    user_type = user_details[-1]
+    UI_OBJECT.user_id = user_details[0]
     if user_type == "customer": 
         open_customer_interface()
         UI_OBJECT.user_mode = 'customer'
-    elif user_type == "salesperson":
+    elif user_type == "sales":
         open_salesperson_interface()
         UI_OBJECT.user_mode = 'salesperson'
     else:
@@ -91,7 +98,6 @@ def open_customer_interface(refresh=True):
         UI_OBJECT.previousButton.setEnabled(False)
         for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
             UI_OBJECT.customerSearchFormDisplay.removeRow(0)
-    items = ...  # Fetch items from database to populate search filters                                         <------------------------------------ Database calls
     UI_OBJECT.accountBox.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
     UI_OBJECT.accountBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.accountBox))
     return
@@ -99,8 +105,9 @@ def open_customer_interface(refresh=True):
 def customer_search_for_products():
     """Displays products based on search."""
     searchString = UI_OBJECT.customerSearchLineEdit.text().lower()
-    products = ...# Fetch products from database based on searchString (returns a Dictionary with productid as key)<------------------------------------ Database calls
-    products = {1: "Product A", 2: "Product B", 3: "Product C", 4: "Product D", 5: "Product E", 6: "Product F", 7: "Product G", 8: "Product H", 9: "Product I", 10: "Product J", 11: "Product K"}
+    check, products = dbManager.search_product(UI_OBJECT.cursor, searchString)
+    if not check:
+        popupFile.info_popup("No products found")
     totalPages = len(products) // 5 + (1 if len(products) % 5 != 0 else 0)
     UI_OBJECT.totalPageLabel.setText(str(totalPages))
     UI_OBJECT.of.setText("of")
@@ -162,7 +169,7 @@ def separate_to_pages(products, productsPerPage=5):
     paginated_products = {}
     count = 0
     for i in products:
-        paginated_products[i] = products[i]
+        paginated_products[i[0]] = i[1]+": "+i[-1]
         count += 1
         if count == productsPerPage:
             count = 0
@@ -176,29 +183,25 @@ def view_product_details(product_id):
     """Views the details of a selected product."""
     # get product details from database using product_id                                                            <------------------------------------ Database calls
     # Update viewedProduct table in database to add a record of this view                                            <------------------------------------ Database calls
+    check, product = dbManager.product_details(UI_OBJECT.cursor, product_id)
+    if not check:
+        return
     UI_OBJECT.saveChangesButton.setVisible(False)
     UI_OBJECT.salesComboBox.setVisible(False)
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.productDetailsPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
     UI_OBJECT.productDescComboBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.productDescComboBox))
-    product = {
-        "id": "12345",
-        "name": "Sample Product",
-        "category": "Sample Category",
-        "description": "This is a sample product description.",
-        "price": "19.99",
-        "stock": "0"}
-    UI_OBJECT.productNameLabel.setText(product["name"])
-    UI_OBJECT.productDescriptionLabel.setText(product["description"])
-    UI_OBJECT.idLineEdit.setText(product["id"])
+    UI_OBJECT.productNameLabel.setText(str(product[1]))
+    UI_OBJECT.productDescriptionLabel.setText(product[5])
+    UI_OBJECT.idLineEdit.setText(str(product[0]))
     UI_OBJECT.idLineEdit.setEnabled(False)
-    UI_OBJECT.categoryLineEdit.setText(product["category"])
+    UI_OBJECT.categoryLineEdit.setText(product[2])
     UI_OBJECT.categoryLineEdit.setEnabled(False)
-    UI_OBJECT.priceLineEdit.setText(product["price"])
+    UI_OBJECT.priceLineEdit.setText(str(product[3]))
     UI_OBJECT.priceLineEdit.setEnabled(False)
-    UI_OBJECT.stockLineEdit.setText(product["stock"])
+    UI_OBJECT.stockLineEdit.setText(str(product[4]))
     UI_OBJECT.stockLineEdit.setEnabled(False)
-    if product["stock"] == "0":
+    if str(product[4]) == "0":
         UI_OBJECT.itemCount.setText("0")
         UI_OBJECT.addItemCount.setEnabled(False)
         UI_OBJECT.subtractItemCount.setEnabled(False)
@@ -220,6 +223,7 @@ def add_item_to_cart():
     quantity = UI_OBJECT.itemCount.text()
     # Add item to cart in database                                                                                     <------------------------------------ Database calls
     # Arguments: product_id, quantity
+    dbManager.add_to_cart(UI_OBJECT.cursor, UI_OBJECT.user_id, 1, )
     return
 
 def view_cart():
@@ -507,8 +511,10 @@ def establish_connections():
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    UI_OBJECT = UI() 
+    UI_OBJECT = UI()
     UI_OBJECT.show()
+    UI_OBJECT.conn = sqlite3.connect(sys.argv[1])
+    UI_OBJECT.cursor = UI_OBJECT.conn.cursor() 
     establish_connections()
     start()
     app.exec() 

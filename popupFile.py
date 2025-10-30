@@ -25,3 +25,25 @@ def confirm_popup(message):
 
     result = dialog.exec()
     return result == QDialog.DialogCode.Accepted
+
+def info_popup(message):
+    dialog = QDialog()
+    dialog.setWindowTitle("Info")
+
+    layout = QVBoxLayout(dialog)
+
+    label = QLabel(message)
+    layout.addWidget(label)
+
+    btn_layout = QHBoxLayout()
+    ok_btn = QPushButton("OK")
+
+    ok_btn.clicked.connect(dialog.accept)
+
+    btn_layout.addWidget(ok_btn)
+    layout.addLayout(btn_layout)
+
+    result = dialog.exec()
+    return result == QDialog.DialogCode.Accepted
+
+

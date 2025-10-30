@@ -76,7 +76,7 @@ def register_user(cursor, name, email, password):
         INSERT INTO customers (cid, name, email)
         VALUES (?, ?, ?)
         ''', (id, name, email))
-    return True
+    return True, id
 
 
 """Customer Functions"""
@@ -85,7 +85,7 @@ def search_product(cursor, keyword):
     Search for products by keyword.
     
     @param keyword: search keyword
-
+ 
     @return:
     - true and list of products if found
     - false and empty string if no products found
@@ -96,8 +96,8 @@ def search_product(cursor, keyword):
     cursor.execute('''
         SELECT *
         FROM products
-        WHERE name LIKE %?% 
-        OR descr LIKE %?%
+        WHERE name LIKE ?
+        OR descr LIKE ?
         ''', (f"%{keyword}%", f"%{keyword}%"))
 
     products = cursor.fetchall()

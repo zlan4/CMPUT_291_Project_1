@@ -9,5 +9,7 @@ class UI(QMainWindow):
         uic.loadUi('designerFile.ui', self)
         self.PRODUCTS_LIST = []
         self.current_page_num = 0
-        self.customer_id = None
+        self.user_id = None
         self.user_mode = None
+        self.cursor = None
+        self.conn = None
