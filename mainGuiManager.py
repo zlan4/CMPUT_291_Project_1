@@ -88,7 +88,7 @@ def check_login_info():
         print("Error: Unknown user type")
     return
 
-def open_customer_interface(refresh=True):
+def open_customer_interface(refresh=True, type = "default"):
     """Opens the customer page."""
     pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.customerSearchPage)
     UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
@@ -99,16 +99,37 @@ def open_customer_interface(refresh=True):
         for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
             UI_OBJECT.customerSearchFormDisplay.removeRow(0)
     UI_OBJECT.accountBox.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToContents)
-    UI_OBJECT.accountBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.accountBox))
+    if type == "My Orders":
+        UI_OBJECT.customerSearchLineEdit.setVisible(False)
+        UI_OBJECT.myOrdersLabel.setVisible(True)
+        UI_OBJECT.myOrdersBackButton.setVisible(True)
+        check, products = dbManager.view_past_orders(UI_OBJECT.cursor, UI_OBJECT.user_id)
+        if not check:
+            print("Error retrieving orders")
+            return
+        totalPages = len(products) // 5 + (1 if len(products) % 5 != 1 else 1)
+        UI_OBJECT.totalPageLabel.setText(str(totalPages))
+        UI_OBJECT.of.setText("of")
+        UI_OBJECT.PRODUCTS_LIST = []
+        UI_OBJECT.current_page_num = 0
+        separate_to_pages(products, mode= "Orders")
+        display_next_page(False)
+    else:
+        UI_OBJECT.customerSearchLineEdit.setVisible(True)
+        UI_OBJECT.myOrdersLabel.setVisible(False)
+        UI_OBJECT.myOrdersBackButton.setVisible(False)
     return
 
-def customer_search_for_products():
+def customer_search_for_products(products = False):
     """Displays products based on search."""
     searchString = UI_OBJECT.customerSearchLineEdit.text().lower()
-    check, products = dbManager.search_product(UI_OBJECT.cursor, searchString)
-    if not check:
-        popupFile.info_popup("No products found")
-    totalPages = len(products) // 5 + (1 if len(products) % 5 != 0 else 0)
+    if not products:
+        check, products = dbManager.search_product(UI_OBJECT.cursor, searchString)
+        if not check:
+            for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
+                UI_OBJECT.customerSearchFormDisplay.removeRow(0)
+            popupFile.info_popup("No products found")
+    totalPages = len(products) // 5 + (1 if len(products) % 5 != 1 else 1)
     UI_OBJECT.totalPageLabel.setText(str(totalPages))
     UI_OBJECT.of.setText("of")
     UI_OBJECT.PRODUCTS_LIST = []
@@ -117,7 +138,7 @@ def customer_search_for_products():
     display_next_page()
     return
 
-def display_next_page():
+def display_next_page(productMode = True):
     """Displays the next page of products."""
     if UI_OBJECT.current_page_num+1 > len(UI_OBJECT.PRODUCTS_LIST):
         return
@@ -133,10 +154,10 @@ def display_next_page():
     for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
         UI_OBJECT.customerSearchFormDisplay.removeRow(0)
     UI_OBJECT.currentPageLabel.setText(str(UI_OBJECT.current_page_num))
-    add_product_buttons()
+    add_product_buttons(productMode)
     return
 
-def display_previous_page():
+def display_previous_page(productMode = True):
     """Displays the previous page of products."""
     if UI_OBJECT.current_page_num-1 < 1:
         return
@@ -152,29 +173,45 @@ def display_previous_page():
     for row in range(UI_OBJECT.customerSearchFormDisplay.rowCount()):
         UI_OBJECT.customerSearchFormDisplay.removeRow(0)
     UI_OBJECT.currentPageLabel.setText(str(UI_OBJECT.current_page_num))
-    add_product_buttons()
+    add_product_buttons(productMode)
     return
 
-def add_product_buttons():
+def add_product_buttons(productMode):
     """Adds product buttons to the form layout."""
     products = UI_OBJECT.PRODUCTS_LIST[UI_OBJECT.current_page_num - 1]
     for product in products:
         productButton = QPushButton(products[product])
         productButton.setMinimumSize(100, 75)
-        productButton.clicked.connect(partial(view_product_details, product))
+        if productMode:
+            productButton.clicked.connect(partial(view_product_details, product))
+        else:
+            productButton.clicked.connect(partial(view_order_lines, productButton.text()))
         UI_OBJECT.customerSearchFormDisplay.addRow(productButton)
 
-def separate_to_pages(products, productsPerPage=5):
+def separate_to_pages(products, productsPerPage=5, mode = "default"):
     """Separates products into dicts of 5 products each."""
     paginated_products = {}
     count = 0
-    for i in products:
-        paginated_products[i[0]] = i[1]+": "+i[-1]
-        count += 1
-        if count == productsPerPage:
-            count = 0
-            UI_OBJECT.PRODUCTS_LIST.append(paginated_products)
-            paginated_products = {}
+    if mode == "default":
+        for i in products:
+            paginated_products[i[0]] = str(i[0]) + ": " + i[1]
+            count += 1
+            if count == productsPerPage:
+                count = 0
+                UI_OBJECT.PRODUCTS_LIST.append(paginated_products)
+                paginated_products = {}
+    else:
+        check, totalAmount = dbManager.grand_total(UI_OBJECT.cursor, products[0][0])
+        if not check:
+            print("Error retrieving total amount")
+            return
+        for i in products:
+            paginated_products[i[0]] = str(i[0]) + ": " + i[3] + ", "+i[4]+", "+str(totalAmount)
+            count += 1
+            if count == productsPerPage:
+                count = 0
+                UI_OBJECT.PRODUCTS_LIST.append(paginated_products)
+                paginated_products = {}
     if paginated_products is not None:
         UI_OBJECT.PRODUCTS_LIST.append(paginated_products)
     return
@@ -201,6 +238,7 @@ def view_product_details(product_id):
     UI_OBJECT.priceLineEdit.setEnabled(False)
     UI_OBJECT.stockLineEdit.setText(str(product[4]))
     UI_OBJECT.stockLineEdit.setEnabled(False)
+    UI_OBJECT.itemCount.setText("1")
     if str(product[4]) == "0":
         UI_OBJECT.itemCount.setText("0")
         UI_OBJECT.addItemCount.setEnabled(False)
@@ -272,14 +310,28 @@ def view_cart():
         deleteBtn = QPushButton("Delete")
         UI_OBJECT.cartViewGridLayout.addWidget(deleteBtn, row, 3)
         deleteBtn.clicked.connect(partial(on_delete_clicked, row, layout = UI_OBJECT.cartViewGridLayout))
+        update_total_quantity()
         row += 1
     return
 
 def on_quantity_change(currentSpinBox, price, totalLabel):
-        # Update quantity in cart in database                                                            <------------------------------------ Database calls
-        # Arguments: itemid, value
-        new_quantity = currentSpinBox.value()
-        totalLabel.setText(f"${price*new_quantity:.2f}")
+    # Update quantity in cart in database                                                            <------------------------------------ Database calls
+    # Arguments: itemid, value
+    new_quantity = currentSpinBox.value()
+    totalLabel.setText(f"${price*new_quantity:.2f}")
+    update_total_quantity()
+
+def update_total_quantity():
+    total = 0
+    for i in range(UI_OBJECT.cartViewGridLayout.rowCount()):
+        if UI_OBJECT.cartViewGridLayout.itemAtPosition(i, 2):
+            label = UI_OBJECT.cartViewGridLayout.itemAtPosition(i, 2).widget()
+            total += float(label.text()[1:])
+    UI_OBJECT.totalPriceLabel.setText("$"+str(round(total, 2)))
+    if float(UI_OBJECT.totalPriceLabel.text()[1:]) == float(0):
+        UI_OBJECT.checkoutButton.setEnabled(False)
+    else:
+        UI_OBJECT.checkoutButton.setEnabled(True)
 
 def on_delete_clicked(rowNum, layout):
     for j in  range(4):
@@ -291,6 +343,61 @@ def on_delete_clicked(rowNum, layout):
                 widget.setParent(None)
     # Delete item from cart in database                                                            <------------------------------------ Database calls
         # Arguments: itemid
+    update_total_quantity()
+
+def checkout_button_clicked():
+    check, address = popupFile.input_popup("Please enter shipping address")
+    if not check:
+        return
+    confirm = popupFile.confirm_popup(f"Confirm placing order to {address}")
+    if not confirm:
+        return
+    # create a new order                                                    <------------------------------------ Database calls
+    for i in range(UI_OBJECT.cartViewGridLayout.rowCount()):
+        for j in  range(UI_OBJECT.cartViewGridLayout.columnCount()):
+            item = UI_OBJECT.cartViewGridLayout.itemAtPosition(i, j)
+            if item:
+                widget = item.widget()
+                if widget:
+                    UI_OBJECT.cartViewGridLayout.removeWidget(widget)
+                    widget.deleteLater()
+    update_total_quantity()
+    popupFile.info_popup("Order has been placed")
+
+def view_order_lines(buttonText):
+    pageNo = UI_OBJECT.stackedWidget.indexOf(UI_OBJECT.orderDetailsPage)
+    UI_OBJECT.stackedWidget.setCurrentIndex(pageNo)
+    ono = int(buttonText.split(":")[0])
+    otherDetails = buttonText.split(":")[1]
+    odate, oaddress, ototalAmount = otherDetails.split(",")
+    UI_OBJECT.orderNoDisplay.setText(str(ono))
+    UI_OBJECT.orderDateDisplay.setText(str(odate))
+    UI_OBJECT.shippingAddressDisplay.setText(str(oaddress))
+    UI_OBJECT.totalAmountDisplay.setText("Total: $"+str(ototalAmount))
+    check, order_lines = dbManager.view_order_details(UI_OBJECT.cursor, ono)
+    if not check:
+        popupFile.info_popup("Error retrieving order lines")
+        return
+    add_order_lines_to_layout(order_lines)
+
+def add_order_lines_to_layout(order_lines):
+    for row in range(UI_OBJECT.orderLinesDisplay.rowCount()):
+        UI_OBJECT.orderLinesDisplay.removeRow(0)
+    count = 0
+    for item in order_lines:
+        count += 1
+        check, itemDetails = dbManager.product_details(UI_OBJECT.cursor, item[2])
+        if not check:
+            popupFile.info_popup("Error retrieving product details")
+            return
+        title = QLabel("Product "+ str(count))
+        title.setStyleSheet("font-weight: bold; font-size: 11px;")
+        UI_OBJECT.orderLinesDisplay.addRow(title)
+        UI_OBJECT.orderLinesDisplay.addRow(QLabel("Product Name: "), QLabel(itemDetails[1]))
+        UI_OBJECT.orderLinesDisplay.addRow(QLabel("Category: "), QLabel(itemDetails[2]))
+        UI_OBJECT.orderLinesDisplay.addRow(QLabel("Quantity: "), QLabel(str(item[3])))
+        UI_OBJECT.orderLinesDisplay.addRow(QLabel("Unit Price: "), QLabel(str(item[4])))
+        UI_OBJECT.orderLinesDisplay.addRow(QLabel("Total: "), QLabel(str(round(item[3]*item[4], 2))))
 
 def customer_account_options(comboBox):
     """Handles customer account options."""
@@ -302,6 +409,8 @@ def customer_account_options(comboBox):
         QApplication.quit()
     elif option == "Cart":
         view_cart()
+    elif option == "My Orders":
+        open_customer_interface(type = "My Orders")
 
 ## Salesperson Functions ##--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -473,6 +582,8 @@ def establish_connections():
     UI_OBJECT.customerSearchLineEdit.returnPressed.connect(customer_search_for_products)
     UI_OBJECT.nextButton.clicked.connect(display_next_page)
     UI_OBJECT.previousButton.clicked.connect(display_previous_page)
+    UI_OBJECT.accountBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.accountBox))
+    UI_OBJECT.myOrdersBackButton.clicked.connect(lambda: open_customer_interface(refresh = True))
 
     # Product Details Page Connections
     UI_OBJECT.productDetailsBackButton.clicked.connect(lambda: back_from_details_page())
@@ -482,8 +593,9 @@ def establish_connections():
     UI_OBJECT.salesComboBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.salesComboBox))
 
     # Cart Page Connections
-    UI_OBJECT.cartPageHomeButton.clicked.connect(lambda: open_customer_interface(False))
+    UI_OBJECT.cartPageHomeButton.clicked.connect(lambda: open_customer_interface(True))
     UI_OBJECT.cartPageComboBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.cartPageComboBox))
+    UI_OBJECT.checkoutButton.clicked.connect(checkout_button_clicked)
 
     # Salesperson Page Connections
     UI_OBJECT.salesLogoutButton.clicked.connect(start)
@@ -508,6 +620,10 @@ def establish_connections():
     UI_OBJECT.topProductsComboBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.topProductsComboBox))
     UI_OBJECT.distinctOrdersCheckBox.stateChanged.connect(lambda: check_box_toggled(UI_OBJECT.distinctOrdersCheckBox))
     UI_OBJECT.totalViewsCheckBox.stateChanged.connect(lambda: check_box_toggled(UI_OBJECT.totalViewsCheckBox))
+
+    # Order Details Page Connections
+    UI_OBJECT.orderDetailsHomeButton.clicked.connect(lambda: open_customer_interface(True))
+    UI_OBJECT.orderDetailsComboBox.currentIndexChanged.connect(lambda: customer_account_options(UI_OBJECT.orderDetailsComboBox))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
