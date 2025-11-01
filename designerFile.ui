@@ -24,7 +24,7 @@
        </size>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>3</number>
       </property>
       <widget class="QWidget" name="loginPage">
        <layout class="QVBoxLayout" name="verticalLayout">
@@ -1172,6 +1172,12 @@
           </item>
           <item>
            <widget class="QLabel" name="productDescriptionLabel">
+            <property name="maximumSize">
+             <size>
+              <width>1000</width>
+              <height>16777215</height>
+             </size>
+            </property>
             <property name="font">
              <font>
               <pointsize>15</pointsize>
@@ -1540,7 +1546,7 @@
                </sizepolicy>
               </property>
               <property name="text">
-               <string>Home</string>
+               <string>Back</string>
               </property>
              </widget>
             </item>

@@ -13,3 +13,5 @@ class UI(QMainWindow):
         self.user_mode = None
         self.cursor = None
         self.conn = None
+        self.sessionNo = None
+        self.displayProductMode = True

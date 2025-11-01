@@ -147,7 +147,7 @@ def search_product(cursor, cid, sessionNo, keyword):
     
 
 # ADDED QUERY TO RECORD PRODUCT VIEWS
-def product_details(cursor, cid, sessionNo, product_id):
+def product_details(cursor, product_id):
     """
     Get the details of a specific product.
     
@@ -158,12 +158,7 @@ def product_details(cursor, cid, sessionNo, product_id):
     - false and empty string if product does not exist
     """
     # Record product view
-    ts = sqlite3.datetime.datetime.today().isoformat()
 
-    cursor.execute('''
-        INSERT INTO viewedProduct (cid, sessionNo, ts, pid)
-        VALUES (?, ?, ?, ?)
-        ''', (cid, sessionNo, ts, product_id))
 
     cursor.execute('''
         SELECT *
@@ -178,6 +173,12 @@ def product_details(cursor, cid, sessionNo, product_id):
     else:
         return False, ''
 
+def viewed_product(cursor, cid, sessionNo, product_id):
+    ts = sqlite3.datetime.datetime.today().isoformat()
+    cursor.execute('''
+        INSERT INTO viewedProduct (cid, sessionNo, ts, pid)
+        VALUES (?, ?, ?, ?)
+        ''', (cid, sessionNo, ts, product_id))
 
 def add_to_cart(cursor, cid, sessionNo, pid, qty):
     """
@@ -208,8 +209,16 @@ def add_to_cart(cursor, cid, sessionNo, pid, qty):
             INSERT INTO cart (cid, sessionNo, pid, qty)
             VALUES (?, ?, ?, ?)
             ''', (cid, sessionNo, pid, qty))
-        return True # run the commit outside
+        return True, "" # run the commit outside
 
+## View Cart Items
+def view_cart_items(cursor, cid, sessionNo):
+    cursor.execute('''
+            SELECT *
+            FROM cart
+            WHERE cid = ? AND sessionNo = ?
+            ''', (cid, sessionNo))
+    return cursor.fetchall()
 
 def update_product_cart_quantity(cursor, cid, sessionNo, pid, qty):
     """
@@ -299,7 +308,7 @@ def checkout(cursor, cid, sessionNo, shipping_address):
 
     # Get cart items
     cursor.execute('''
-        SELECT pid, qty, price
+        SELECT cart.pid, qty, price
         FROM cart
         JOIN products ON cart.pid = products.pid
         WHERE cid = ? AND sessionNo = ?
