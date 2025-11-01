@@ -80,7 +80,38 @@ def register_user(cursor, name, email, password):
 
 
 """Customer Functions"""
-def search_product(cursor, keyword):
+def new_session(cursor, cid):
+    """
+    Create a new session for the customer.
+    @param cid: customer id
+    
+    @return:
+    - session number
+    """
+    cursor.execute('''
+        SELECT MAX(sessionNo)
+        FROM sessions
+        WHERE cid = ?
+        ''', (cid,))
+    
+    row = cursor.fetchone()
+    if row[0] is None:
+        sessionNo = 1
+    else:
+        sessionNo = row[0] + 1
+
+    start_time = sqlite3.datetime.datetime.today().isoformat()
+
+    cursor.execute('''
+        INSERT INTO sessions (cid, sessionNo, start_time, end_time)
+        VALUES (?, ?, ?, NULL)
+        ''', (cid, sessionNo, start_time))
+    
+    return sessionNo
+
+
+# THIS FUNCTION HAS BEEN MODIFIED TO RECORD SEARCHES
+def search_product(cursor, cid, sessionNo, keyword):
     """
     Search for products by keyword.
     
@@ -91,6 +122,13 @@ def search_product(cursor, keyword):
     - false and empty string if no products found
     """
     # Add search to table
+    ts = sqlite3.datetime.datetime.today().isoformat()
+    
+    cursor.execute('''
+        INSERT INTO search (cid, sessionNo, ts, query)
+        VALUES (?, ?, ?, ?)
+        ''', (cid, sessionNo, ts, keyword))
+
 
     # Return products
     cursor.execute('''
@@ -108,7 +146,8 @@ def search_product(cursor, keyword):
         return False, ''
     
 
-def product_details(cursor, product_id):
+# ADDED QUERY TO RECORD PRODUCT VIEWS
+def product_details(cursor, cid, sessionNo, product_id):
     """
     Get the details of a specific product.
     
@@ -118,6 +157,14 @@ def product_details(cursor, product_id):
     - true and product details if product exists
     - false and empty string if product does not exist
     """
+    # Record product view
+    ts = sqlite3.datetime.datetime.today().isoformat()
+
+    cursor.execute('''
+        INSERT INTO viewedProduct (cid, sessionNo, ts, pid)
+        VALUES (?, ?, ?, ?)
+        ''', (cid, sessionNo, ts, product_id))
+
     cursor.execute('''
         SELECT *
         FROM products
