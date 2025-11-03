@@ -88,6 +88,7 @@ def new_session(cursor, cid):
     @return:
     - session number
     """
+    # Get the max sessionNo and add one to it to get the next sessionNo
     cursor.execute('''
         SELECT MAX(sessionNo)
         FROM sessions
@@ -110,7 +111,6 @@ def new_session(cursor, cid):
     return sessionNo
 
 
-# THIS FUNCTION HAS BEEN MODIFIED TO RECORD SEARCHES
 def search_product(cursor, cid, sessionNo, keyword):
     """
     Search for products by keyword.
@@ -129,7 +129,6 @@ def search_product(cursor, cid, sessionNo, keyword):
         VALUES (?, ?, ?, ?)
         ''', (cid, sessionNo, ts, keyword))
 
-
     # Return products
     cursor.execute('''
         SELECT *
@@ -146,7 +145,7 @@ def search_product(cursor, cid, sessionNo, keyword):
         return False, ''
     
 
-# ADDED QUERY TO RECORD PRODUCT VIEWS
+
 def product_details(cursor, product_id):
     """
     Get the details of a specific product.
@@ -157,9 +156,6 @@ def product_details(cursor, product_id):
     - true and product details if product exists
     - false and empty string if product does not exist
     """
-    # Record product view
-
-
     cursor.execute('''
         SELECT *
         FROM products
@@ -179,6 +175,7 @@ def viewed_product(cursor, cid, sessionNo, product_id):
         INSERT INTO viewedProduct (cid, sessionNo, ts, pid)
         VALUES (?, ?, ?, ?)
         ''', (cid, sessionNo, ts, product_id))
+
 
 def add_to_cart(cursor, cid, sessionNo, pid, qty):
     """
@@ -285,7 +282,7 @@ def checkout(cursor, cid, sessionNo, shipping_address):
     @return:
     - true if checkout is successful
     """
-    # Generate unique order number
+    # Generate unique order number, loop until a unique one is created
     while True:
         ono = random.randint(10000, 99999)
         cursor.execute('''
@@ -338,7 +335,7 @@ def checkout(cursor, cid, sessionNo, shipping_address):
             WHERE cid = ? AND sessionNo = ? AND pid = ?
             ''', (cid, sessionNo, pid))
 
-        lineNo += 1
+        lineNo += 1 # increment the lineNo for other products
 
     return True # run the commit outside
 
