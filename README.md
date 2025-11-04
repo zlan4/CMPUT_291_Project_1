@@ -6,7 +6,7 @@ Group member names and ccids (2-3 members)
   polisett, Vijayasaradhi Polisetti  
 
 # Names of anyone you have collaborated with (as much as it is allowed within the course policy) or a line saying that you did not collaborate with anyone else.  
-
+`N/A`
 
 # Accessing Virtual Environment
 1) Create the virtual environment using Python >=3.11
