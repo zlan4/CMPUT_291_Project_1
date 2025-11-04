@@ -27,5 +27,3 @@ Group member names and ccids (2-3 members)
 
 4) Install dependencies
 `pip install -r requirements.txt`
-
-5) 
