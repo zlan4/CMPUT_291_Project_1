@@ -8,14 +8,24 @@ Group member names and ccids (2-3 members)
 # Names of anyone you have collaborated with (as much as it is allowed within the course policy) or a line saying that you did not collaborate with anyone else.  
 
 
-# Accessing Virtual Environment on Linux
-1) Create the virtual environment
+# Accessing Virtual Environment
+1) Create the virtual environment using Python >=3.11
+- MacOS + Linux
 `python3 -m venv <envname>`
+- Windows
+`python -m venv <envname>`
 
 2) Activate the virtual environment
+- MacOS + Linux
 `source <envname>/bin/activate`
+- Windows Command Prompt
+`<envname>/Scripts/activate.bat`
+- Windows PowerShell
+`./<envname>/Scripts/activate.ps1`
 
 3) Make sure to add your virtual environment to the .gitignore file
 
 4) Install dependencies
 `pip install -r requirements.txt`
+
+5) 
