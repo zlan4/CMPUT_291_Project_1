@@ -1,9 +1,5 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/Or0lo4Ny)
-# CMPUT 291 Project 1 - Fall 2025  
-Group member names and ccids (2-3 members)  
-  ciquinto, Lance Quinto  
-  zlan4, Emily Lan  
-  polisett, Vijayasaradhi Polisetti  
+# CMPUT 291 Group Project 1 - Fall 2025  
+This application is similar to an online shopping system with two end-users, customers and salespeople. Users have the ability to browse different products available for purchase, create a secure account, search for items, manage their shopping cart, check out, and view past orders. Salespeople are able to update product information, generate weekly sales reports, and view the best-selling items. To facilitate these user and application interactions, the graphical user interface (GUI) was built using PyQt6. The system functionalities were implemented using Python code integrated with SQLite3. Important information such as product and user details was stored in a database, which was accessed at various times throughout the program to check for things like username and password validity, fetch product details based on searched keywords, record new user signups or other updates, and ensure that those data remain persistent and accessible even after the application has finished running or has been rebooted.
 
 # Names of anyone you have collaborated with (as much as it is allowed within the course policy) or a line saying that you did not collaborate with anyone else.  
 `N/A`
